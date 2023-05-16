@@ -2,7 +2,7 @@ plugins {
 //    id "org.jetbrains.gradle.plugin.idea-ext" version "1.1.7"
     id 'idea'
     id 'cpp-library'
-    id 'java'
+    id 'java-library'
 }
 
 group 'com.github.preferme'
@@ -21,23 +21,28 @@ library {
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 [compileJava, compileTestJava]*.options.collect {options -> options.encoding = 'UTF-8'}
+repositories {
+    mavenCentral()
+}
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
+}
 
-def javaHome = System.getenv('JAVA_HOME')
+String javaHome = System.properties.get("java.home")
 
 tasks.withType(CppCompile).configureEach {
     // Define a preprocessor macro for every binary
     macros.put("NDEBUG", null)
-
-    // Define a compiler options
-    compilerArgs.add '-W3'
-
-
-    compilerArgs.add "-I${javaHome}/include"
-    if (machines.windows) {
-        compilerArgs.add "-I${javaHome}/include/win32"
-    } else if (machines.macOS) {
-        compilerArgs.add "-I${javaHome}/include/darwin"
+    if (javaHome.endsWith("/jre")) {
+        javaHome = javaHome.substring(0, javaHome.length()-4)
     }
+    compilerArgs.add "-I${javaHome}/include"
+
+//    if (machines.windows) {
+//        compilerArgs.add "-I${javaHome}/include/win32"
+//    } else if (machines.macOS) {
+        compilerArgs.add "-I${javaHome}/include/darwin"
+//    }
 //    binaries.all {
 //        if (targetPlatform.operatingSystem.macOsX) {
 //            cCompiler.args '-I', "${Jvm.current().javaHome}/include"
@@ -66,5 +71,23 @@ tasks.withType(CppCompile).configureEach {
             return ['/Zi']
         }
         return []
+    }
+}
+
+// must be same as the logic that loads the library from the jar
+String osName = System.getProperty("os.name");
+if(osName.toLowerCase().matches(".*windows.*")) osName = "Windows"
+String osArch = System.getProperty("os.arch");
+
+println("osName=${osName}")
+println("osArch=${osArch}")
+
+jar {
+    configurations.runtime.each { println it.path }
+    println "========="
+    configurations.compile.each { println it.path }
+    println "========="
+    into("WEB-INF/lib") {
+        from("build/lib/main/release")
     }
 }

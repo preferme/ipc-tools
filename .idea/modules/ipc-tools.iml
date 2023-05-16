@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="4">
+  <component name="ExternalSystem" externalSystem="GRADLE" externalSystemModuleGroup="com.github.preferme" externalSystemModuleVersion="1.2.1" linkedProjectId="ipc-tools" linkedProjectPath="$MODULE_DIR$/../.." rootProjectPath="$MODULE_DIR$/../.." />
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$/../..">
+      <excludeFolder url="file://$MODULE_DIR$/../../.gradle" />
+      <excludeFolder url="file://$MODULE_DIR$/../../build" />
+      <excludeFolder url="file://$MODULE_DIR$/../../out" />
+    </content>
+    <content url="file://$MODULE_DIR$/../../src/main/cpp">
+      <sourceFolder url="file://$MODULE_DIR$/../../src/main/cpp" isTestSource="false" />
+    </content>
+    <content url="file://$MODULE_DIR$/../../src/main/headers">
+      <sourceFolder url="file://$MODULE_DIR$/../../src/main/headers" isTestSource="false" />
+    </content>
+    <content url="file://$MODULE_DIR$/../../src/main/public" />
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

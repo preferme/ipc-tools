@@ -6,7 +6,8 @@ public class SharedMemery {
      * 加载动态链接库
      */
     static {
-        System.loadLibrary("ipc-tools");
+//        System.loadLibrary("ipc-tools");
+        EmbeddedLoader.load("ipc-tools");
     }
 
     private final String name;
