@@ -13,7 +13,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define LOG(...)  printf(#__VA_ARGS__)
+#define LOG(format, ...)  printf(format, ##__VA_ARGS__)
 
 typedef struct {
     bool initialized;
@@ -67,7 +67,7 @@ JNIEXPORT void JNICALL Java_com_github_preferme_ipc_SharedMemery_initialize
         throw_runtime_exception(env, "open map fd failed.");
         return;
     }
-    LOG("[SharedMemery_initialize] name : %s", cName);
+    LOG("[SharedMemery_initialize] name : %s\n", cName);
     env->ReleaseStringUTFChars(str_name, cName);
     // 2. 获取成员变量 length
     jfieldID fId_length = env->GetFieldID(klass,"length","I");
@@ -92,6 +92,7 @@ JNIEXPORT void JNICALL Java_com_github_preferme_ipc_SharedMemery_initialize
     }
     // 共享内存的起始位置保存用于读写同步的互斥锁以及读写标记，后续的位置保存数据。
     shared_attr * p_shared_attr = (shared_attr *)mapped_address;
+    LOG("[SharedMemery_initialize] p_shared_attr->initialized = %s\n", p_shared_attr->initialized?"true":"false");
     if (is_new_map || p_shared_attr->initialized == false) {
         printf("[SharedMemery_initialize] init shared_attr\n");
         memset(mapped_address, 0, sizeof(shared_attr));
@@ -140,8 +141,10 @@ JNIEXPORT void JNICALL Java_com_github_preferme_ipc_SharedMemery_destroy
     }
     shared_attr * p_shared_attr = (shared_attr *)l_mapped_addr;
     // 2. 清理资源
+    LOG("[SharedMemery_destroy] p_shared_attr->initialized = %s\n", p_shared_attr->initialized?"true":"false");
     if (p_shared_attr->initialized == true) {
-        LOG("[SharedMemery_destroy] release resources.");
+        p_shared_attr->initialized = false;
+        LOG("[SharedMemery_destroy] release resources.\n");
         // 2.1 销毁 读写条件变量
         pthread_cond_destroy(&p_shared_attr->cond_read);
         pthread_cond_destroy(&p_shared_attr->cond_write);
@@ -162,6 +165,7 @@ JNIEXPORT void JNICALL Java_com_github_preferme_ipc_SharedMemery_destroy
         const char * cName = env->GetStringUTFChars(str_name, NULL);
         shm_unlink(cName);
         env->ReleaseStringUTFChars(str_name, cName);
+        LOG("[SharedMemery_destroy] release done.\n");
     }
 }
 
@@ -177,7 +181,7 @@ JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_writerIndex
     jclass klass = env->GetObjectClass(self);
     jfieldID fId_address = env->GetFieldID(klass,"address","J");
     jlong l_mapped_addr = env->GetLongField(self, fId_address);
-    LOG("[SharedMemery_writerIndex] l_mapped_addr = %d\n", l_mapped_addr);
+    LOG("[SharedMemery_writerIndex] l_mapped_addr = %i\n", l_mapped_addr);
     if (l_mapped_addr <= 0) {
         throw_runtime_exception(env, "load map address failed.");
         return -1;
@@ -202,7 +206,7 @@ JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_writableBytes
     jclass klass = env->GetObjectClass(self);
     jfieldID fId_address = env->GetFieldID(klass,"address","J");
     jlong l_mapped_addr = env->GetLongField(self, fId_address);
-    LOG("[SharedMemery_writableBytes] l_mapped_addr = %d\n", l_mapped_addr);
+    LOG("[SharedMemery_writableBytes] l_mapped_addr = %i\n", l_mapped_addr);
     if (l_mapped_addr <= 0) {
         throw_runtime_exception(env, "load map address failed.");
         return -1;
@@ -233,7 +237,7 @@ JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_readerIndex
     jclass klass = env->GetObjectClass(self);
     jfieldID fId_address = env->GetFieldID(klass,"address","J");
     jlong l_mapped_addr = env->GetLongField(self, fId_address);
-    LOG("[SharedMemery_readerIndex] l_mapped_addr = %d\n", l_mapped_addr);
+    LOG("[SharedMemery_readerIndex] l_mapped_addr = %i\n", l_mapped_addr);
     if (l_mapped_addr <= 0) {
         throw_runtime_exception(env, "load map address failed.");
         return -1;
@@ -258,7 +262,7 @@ JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_readableBytes
     jclass klass = env->GetObjectClass(self);
     jfieldID fId_address = env->GetFieldID(klass,"address","J");
     jlong l_mapped_addr = env->GetLongField(self, fId_address);
-    LOG("[SharedMemery_readableBytes] l_mapped_addr = %d\n", l_mapped_addr);
+    LOG("[SharedMemery_readableBytes] l_mapped_addr = %i\n", l_mapped_addr);
     if (l_mapped_addr <= 0) {
         throw_runtime_exception(env, "load map address failed.");
         return -1;
@@ -285,7 +289,68 @@ JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_readableBytes
  */
 JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_getBytes
   (JNIEnv * env, jobject self, jint index, jbyteArray buffer, jint offset, jint length) {
-
+    // 1.1. 校验 index, offset, length 是否为非负数
+    if (index < 0) {
+        throw_runtime_exception(env, "index cannot be negative.");
+        return self;
+    }
+    if (offset < 0) {
+        throw_runtime_exception(env, "offset cannot be negative.");
+        return self;
+    }
+    if (length < 0) {
+        throw_runtime_exception(env, "length cannot be negative.");
+        return self;
+    }
+    // 1.2. 校验 buffer 的长度与 offset,length 是否合适
+    jsize buff_size = env->GetArrayLength(buffer);
+    if (offset + length > buff_size) {
+        throw_runtime_exception(env, "offset and length out of buffer size.");
+        return self;
+    }
+    // 1.3. 读取映射后的地址
+    jclass klass = env->GetObjectClass(self);
+    jfieldID fId_address = env->GetFieldID(klass,"address","J");
+    jlong l_mapped_addr = env->GetLongField(self, fId_address);
+    LOG("[SharedMemery_getBytes] l_mapped_addr = %i\n", l_mapped_addr);
+    if (l_mapped_addr <= 0) {
+        throw_runtime_exception(env, "load map address failed.");
+        return self;
+    }
+    // 1.3.1. 访问共享属性
+    shared_attr * p_shared_attr = (shared_attr*) l_mapped_addr;
+    jint capacity = -1;
+    pthread_mutex_lock(&p_shared_attr->mutex);
+    capacity = p_shared_attr->capacity;
+    // 1.3.2. 校验参数 index
+    if (index >= capacity) {
+        throw_runtime_exception(env, "index cannot be greater than capacity.");
+        pthread_mutex_unlock(&p_shared_attr->mutex);
+        return self;
+    }
+    // 2. 读取数据
+    const jbyte *buf = reinterpret_cast<const jbyte *>(l_mapped_addr + sizeof(shared_attr) + index);
+    if (index + length <= capacity) {
+        // 2.1 读取中间部分的数据
+        env->SetByteArrayRegion(buffer, offset, length, buf);
+    } else {
+        // 2.2 读取前后两部分数据
+        jsize second_part = index + length - capacity;
+        jsize first_part = length - second_part;
+        if (first_part < 0) {
+            throw_runtime_exception(env, "not enough bytes to be read.");
+            pthread_mutex_unlock(&p_shared_attr->mutex);
+            return self;
+        }
+        if (first_part > 0) {
+            env->SetByteArrayRegion(buffer, offset, first_part, buf);
+        }
+        if (second_part > 0) {
+            const jbyte *buf_second = reinterpret_cast<const jbyte *>(l_mapped_addr + sizeof(shared_attr));
+            env->SetByteArrayRegion(buffer, offset + first_part, second_part, buf_second);
+        }
+    }
+    pthread_mutex_unlock(&p_shared_attr->mutex);
     return self;
 }
 
@@ -296,8 +361,68 @@ JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_getBytes
  */
 JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_setBytes
   (JNIEnv * env, jobject self, jint index, jbyteArray buffer, jint offset, jint length) {
-
-
+    // 1.1. 校验 index, offset, length 是否为非负数
+    if (index < 0) {
+        throw_runtime_exception(env, "index cannot be negative.");
+        return self;
+    }
+    if (offset < 0) {
+        throw_runtime_exception(env, "offset cannot be negative.");
+        return self;
+    }
+    if (length < 0) {
+        throw_runtime_exception(env, "length cannot be negative.");
+        return self;
+    }
+    // 1.2. 校验 buffer 的长度与 offset,length 是否合适
+    jsize buff_size = env->GetArrayLength(buffer);
+    if (offset + length > buff_size) {
+        throw_runtime_exception(env, "offset and length out of buffer size.");
+        return self;
+    }
+    // 1.3. 读取映射后的地址
+    jclass klass = env->GetObjectClass(self);
+    jfieldID fId_address = env->GetFieldID(klass,"address","J");
+    jlong l_mapped_addr = env->GetLongField(self, fId_address);
+    LOG("[SharedMemery_setBytes] l_mapped_addr = %i\n", l_mapped_addr);
+    if (l_mapped_addr <= 0) {
+        throw_runtime_exception(env, "load map address failed.");
+        return self;
+    }
+    // 1.3.1. 访问共享属性
+    shared_attr * p_shared_attr = (shared_attr*) l_mapped_addr;
+    jint capacity = -1;
+    pthread_mutex_lock(&p_shared_attr->mutex);
+    capacity = p_shared_attr->capacity;
+    // 1.3.2. 校验参数 index
+    if (index >= capacity) {
+        throw_runtime_exception(env, "index cannot be greater than capacity.");
+        pthread_mutex_unlock(&p_shared_attr->mutex);
+        return self;
+    }
+    // 2. 写入数据
+    jbyte * buf = reinterpret_cast<jbyte *>(l_mapped_addr + sizeof(shared_attr) + index);
+    if (index + length <= capacity) {
+        // 2.1 写入中间部分的数据
+        env->GetByteArrayRegion(buffer, offset, length, buf);
+    } else {
+        // 2.2 写入前后两部分数据
+        jsize second_part = index + length - capacity;
+        jsize first_part = length - second_part;
+        if (first_part < 0) {
+            throw_runtime_exception(env, "not enough bytes to be write.");
+            pthread_mutex_unlock(&p_shared_attr->mutex);
+            return self;
+        }
+        if (first_part > 0) {
+            env->GetByteArrayRegion(buffer, offset, first_part, buf);
+        }
+        if (second_part > 0) {
+            jbyte *buf_second = reinterpret_cast<jbyte *>(l_mapped_addr + sizeof(shared_attr));
+            env->GetByteArrayRegion(buffer, offset + first_part, second_part, buf_second);
+        }
+    }
+    pthread_mutex_unlock(&p_shared_attr->mutex);
     return self;
 }
 
@@ -307,7 +432,76 @@ JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_setBytes
  * Signature: ([BII)Lcom/github/preferme/ipc/SharedMemery;
  */
 JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_readBytes
-  (JNIEnv *, jobject, jbyteArray, jint, jint);
+  (JNIEnv * env, jobject self, jbyteArray buffer, jint offset, jint length) {
+    // 1.1. 校验 offset, length 是否为非负数
+    if (offset < 0) {
+        throw_runtime_exception(env, "offset cannot be negative.");
+        return self;
+    }
+    if (length < 0) {
+        throw_runtime_exception(env, "length cannot be negative.");
+        return self;
+    }
+    // 1.2. 校验 buffer 的长度与 offset,length 是否合适
+    jsize buff_size = env->GetArrayLength(buffer);
+    if (offset + length > buff_size) {
+        throw_runtime_exception(env, "offset and length out of buffer size.");
+        return self;
+    }
+    // 1.3. 读取映射后的地址
+    jclass klass = env->GetObjectClass(self);
+    jfieldID fId_address = env->GetFieldID(klass,"address","J");
+    jlong l_mapped_addr = env->GetLongField(self, fId_address);
+    LOG("[SharedMemery_getBytes] l_mapped_addr = %i\n", l_mapped_addr);
+    if (l_mapped_addr <= 0) {
+        throw_runtime_exception(env, "load map address failed.");
+        return self;
+    }
+    // 1.3.1. 访问共享属性
+    shared_attr * p_shared_attr = (shared_attr*) l_mapped_addr;
+    jint reader_index = -1, writer_index = -1, capacity = -1;
+    pthread_mutex_lock(&p_shared_attr->mutex);
+    reader_index = p_shared_attr->reader_index;
+    writer_index = p_shared_attr->writer_index;
+    capacity = p_shared_attr->capacity;
+    // 1.4 校验可读数据量
+    int readableBytes =  reader_index <= writer_index
+                         ? writer_index - reader_index
+                         : writer_index + (capacity-reader_index);
+    if (length > readableBytes) {
+        throw_runtime_exception(env, "not enough bytes to be read.");
+        pthread_mutex_unlock(&p_shared_attr->mutex);
+        return self;
+    }
+    // 2. 读取数据
+    jint index = p_shared_attr->reader_index;
+    const jbyte *buf = reinterpret_cast<const jbyte *>(l_mapped_addr + sizeof(shared_attr) + index);
+    if (index + length <= capacity) {
+        // 2.1 读取中间部分的数据
+        env->SetByteArrayRegion(buffer, offset, length, buf);
+        p_shared_attr->reader_index += length;
+    } else {
+        // 2.2 读取前后两部分数据
+        jsize second_part = index + length - capacity;
+        jsize first_part = length - second_part;
+        if (first_part < 0) {
+            throw_runtime_exception(env, "not enough bytes to be read.");
+            pthread_mutex_unlock(&p_shared_attr->mutex);
+            return self;
+        }
+        if (first_part > 0) {
+            env->SetByteArrayRegion(buffer, offset, first_part, buf);
+            p_shared_attr->reader_index += first_part;
+        }
+        if (second_part > 0) {
+            const jbyte *buf_second = reinterpret_cast<const jbyte *>(l_mapped_addr + sizeof(shared_attr));
+            env->SetByteArrayRegion(buffer, offset + first_part, second_part, buf_second);
+            p_shared_attr->reader_index = second_part;
+        }
+    }
+    pthread_mutex_unlock(&p_shared_attr->mutex);
+    return self;
+}
 
 /*
  * Class:     com_github_preferme_ipc_SharedMemery
@@ -315,4 +509,73 @@ JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_readBytes
  * Signature: ([BII)Lcom/github/preferme/ipc/SharedMemery;
  */
 JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_writeBytes
-  (JNIEnv *, jobject, jbyteArray, jint, jint);
+  (JNIEnv * env, jobject self, jbyteArray buffer, jint offset, jint length) {
+    // 1.1. 校验 offset, length 是否为非负数
+    if (offset < 0) {
+        throw_runtime_exception(env, "offset cannot be negative.");
+        return self;
+    }
+    if (length < 0) {
+        throw_runtime_exception(env, "length cannot be negative.");
+        return self;
+    }
+    // 1.2. 校验 buffer 的长度与 offset,length 是否合适
+    jsize buff_size = env->GetArrayLength(buffer);
+    if (offset + length > buff_size) {
+        throw_runtime_exception(env, "offset and length out of buffer size.");
+        return self;
+    }
+    // 1.3. 读取映射后的地址
+    jclass klass = env->GetObjectClass(self);
+    jfieldID fId_address = env->GetFieldID(klass,"address","J");
+    jlong l_mapped_addr = env->GetLongField(self, fId_address);
+    LOG("[SharedMemery_setBytes] l_mapped_addr = %i\n", l_mapped_addr);
+    if (l_mapped_addr <= 0) {
+        throw_runtime_exception(env, "load map address failed.");
+        return self;
+    }
+    // 1.3.1. 访问共享属性
+    shared_attr * p_shared_attr = (shared_attr*) l_mapped_addr;
+    jint reader_index = -1, writer_index = -1, capacity = -1;
+    pthread_mutex_lock(&p_shared_attr->mutex);
+    reader_index = p_shared_attr->reader_index;
+    writer_index = p_shared_attr->writer_index;
+    capacity = p_shared_attr->capacity;
+    // 1.4 校验可写入的数据量
+    jsize writableBytes = reader_index <= writer_index
+                          ? capacity - 1 - (writer_index - reader_index)
+                          : reader_index - writer_index - 1;
+    if (length > writableBytes) {
+        throw_runtime_exception(env, "not enough capacity to be write.");
+        pthread_mutex_unlock(&p_shared_attr->mutex);
+        return self;
+    }
+    // 2. 写入数据
+    jint index = writer_index;
+    jbyte * buf = reinterpret_cast<jbyte *>(l_mapped_addr + sizeof(shared_attr) + index);
+    if (index + length <= capacity) {
+        // 2.1 写入中间部分的数据
+        env->GetByteArrayRegion(buffer, offset, length, buf);
+        p_shared_attr->writer_index += length;
+    } else {
+        // 2.2 写入前后两部分数据
+        jsize second_part = index + length - capacity;
+        jsize first_part = length - second_part;
+        if (first_part < 0) {
+            throw_runtime_exception(env, "not enough bytes to be write.");
+            pthread_mutex_unlock(&p_shared_attr->mutex);
+            return self;
+        }
+        if (first_part > 0) {
+            env->GetByteArrayRegion(buffer, offset, first_part, buf);
+            p_shared_attr->writer_index += first_part;
+        }
+        if (second_part > 0) {
+            jbyte *buf_second = reinterpret_cast<jbyte *>(l_mapped_addr + sizeof(shared_attr));
+            env->GetByteArrayRegion(buffer, offset + first_part, second_part, buf_second);
+            p_shared_attr->writer_index = second_part;
+        }
+    }
+    pthread_mutex_unlock(&p_shared_attr->mutex);
+    return self;
+}

@@ -77,3 +77,13 @@ jar {
         }
     }
 }
+
+clean {
+    doLast {
+//        exec {
+//            workingDir rootDir.path + '/java'
+//            commandLine "rm", "hs_err_pid*.log"
+//        }
+        delete rootDir.path + '/java/hs_err_pid*.log'
+    }
+}
