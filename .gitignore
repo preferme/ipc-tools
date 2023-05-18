@@ -35,3 +35,8 @@
 /build/
 /out/
 .DS_Store
+/c/build/
+/nodejs/node_modules/
+/nodejs/build/
+/java/out/
+/java/build/
