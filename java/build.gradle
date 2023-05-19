@@ -41,41 +41,41 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 [compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
 
-task copyLib(type: Copy) {
-    dependsOn ':c:copyLib'
-    from rootDir.path + '/c/build/lib'
-    into 'build/lib'
-    include '*.dylib'
-}
+//task copyLib(type: Copy) {
+//    dependsOn ':jni:copyLib'
+//    from rootDir.path + '/jni/build/lib'
+//    into 'build/lib'
+//    include '*.dylib'
+//}
 
-buildDependents {
-    dependsOn ':c:copyLib'
+compileJava {
+    dependsOn ':jni:build'
     doLast {
 //        delete fileTree(dir: '.', includes: 'hs_err_pid*.log')
         copy {
-            from rootDir.path + '/c/build/lib'
-            into 'out/production/classes/META-INF/lib'
-            include '*.dylib'
+            from 'build/classes/java/main'
+            into 'out/production/classes'
+            include '**/*.dll'
         }
         copy {
-            from rootDir.path + '/c/build/lib'
-            into 'out/test/classes/META-INF/lib'
-            include '*.dylib'
+            from 'build/classes/java/main'
+            into 'out/test/classes'
+            include '**/*.dll'
         }
     }
     tasks.find {it.name.contains('test')}.enabled = false
 }
-
+//
 jar {
-    dependsOn ':c:copyLib'
-//    baseName 'ipc-tools'
-    doFirst {
-        copy {
-            from rootDir.path + '/c/build/lib'
-            into 'build/classes/java/main/META-INF/lib'
-            include '*.dylib'
-        }
-    }
+//    dependsOn ':c:copyLib'
+    baseName 'ipc-tools'
+//    doFirst {
+//        copy {
+//            from rootDir.path + '/jin/build/lib'
+//            into 'build/classes/java/main/META-INF/lib'
+//            include '*.dylib'
+//        }
+//    }
 }
 
 clean {

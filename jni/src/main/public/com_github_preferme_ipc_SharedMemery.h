@@ -25,26 +25,10 @@ JNIEXPORT void JNICALL Java_com_github_preferme_ipc_SharedMemery_destroy
 
 /*
  * Class:     com_github_preferme_ipc_SharedMemery
- * Method:    writerIndex
- * Signature: ()I
- */
-JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_writerIndex
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_github_preferme_ipc_SharedMemery
  * Method:    writableBytes
  * Signature: ()I
  */
 JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_writableBytes
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_github_preferme_ipc_SharedMemery
- * Method:    readerIndex
- * Signature: ()I
- */
-JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_readerIndex
   (JNIEnv *, jobject);
 
 /*
@@ -57,35 +41,19 @@ JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_readableBytes
 
 /*
  * Class:     com_github_preferme_ipc_SharedMemery
- * Method:    getBytes
- * Signature: (I[BII)Lcom/github/preferme/ipc/SharedMemery;
+ * Method:    read
+ * Signature: (Lcom/github/preferme/ipc/ByteBufferFactory;)Ljava/nio/ByteBuffer;
  */
-JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_getBytes
-  (JNIEnv *, jobject, jint, jbyteArray, jint, jint);
+JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_read
+  (JNIEnv *, jobject, jobject);
 
 /*
  * Class:     com_github_preferme_ipc_SharedMemery
- * Method:    setBytes
- * Signature: (I[BII)Lcom/github/preferme/ipc/SharedMemery;
+ * Method:    write
+ * Signature: (Ljava/nio/ByteBuffer;)V
  */
-JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_setBytes
-  (JNIEnv *, jobject, jint, jbyteArray, jint, jint);
-
-/*
- * Class:     com_github_preferme_ipc_SharedMemery
- * Method:    readBytes
- * Signature: ([BII)Lcom/github/preferme/ipc/SharedMemery;
- */
-JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_readBytes
-  (JNIEnv *, jobject, jbyteArray, jint, jint);
-
-/*
- * Class:     com_github_preferme_ipc_SharedMemery
- * Method:    writeBytes
- * Signature: ([BII)Lcom/github/preferme/ipc/SharedMemery;
- */
-JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_writeBytes
-  (JNIEnv *, jobject, jbyteArray, jint, jint);
+JNIEXPORT void JNICALL Java_com_github_preferme_ipc_SharedMemery_write
+  (JNIEnv *, jobject, jobject);
 
 #ifdef __cplusplus
 }

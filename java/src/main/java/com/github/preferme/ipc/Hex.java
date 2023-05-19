@@ -16,4 +16,7 @@ public class Hex {
         return builder.toString();
     }
 
+    public static String toString(byte[] buffer) {
+        return toString(buffer, 0, buffer.length);
+    }
 }

@@ -6,7 +6,8 @@ public class Main {
 
 //        EmbeddedLoader.load("ipc-tools");
         SharedMemery memery = new SharedMemery("/abcdef", 4* 1024);
-
+        System.out.println("memery" + memery);
+memery.destroy();
     }
 
 }

@@ -27,6 +27,7 @@ public final class EmbeddedLoader {
             String extension = "so";
             String prefix = "lib";
             if (osName.toLowerCase().contains("windows")) {
+                prefix = "";
                 osName = "windows";
                 extension = "dll";
             }
@@ -44,6 +45,7 @@ public final class EmbeddedLoader {
 //                System.load(url.getFile());
 //                return  true;
 //            }
+            System.err.println("path:: " + path);
 
             InputStream src = EmbeddedLoader.class.getResourceAsStream(path);
 

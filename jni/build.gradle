@@ -19,7 +19,6 @@ library {
     // Set the target operating system and architecture for this library
     targetMachines = [
             machines.linux.x86_64,
-            machines.windows.x86,
             machines.windows.x86_64,
             machines.macOS.x86_64
     ]
@@ -27,9 +26,19 @@ library {
 
 }
 
+model {
+    toolChains {
+        gcc(Gcc) {
+            target("windows") {
+                path '/custom/path/to/gcc-7.1.0/bin/'
+            }
+        }
+    }
+}
+
 // make jdkHome
 String jdkHome = System.properties.get("java.home")
-if (jdkHome.endsWith("/jre")) {
+if (jdkHome.endsWith("jre")) {
     jdkHome = jdkHome.substring(0, jdkHome.length()-4)
 }
 
@@ -64,9 +73,21 @@ tasks.withType(CppCompile).configureEach {
 
 }
 
-tasks.register("copyLib", Copy) {
-    dependsOn ':c:assembleReleaseMacosX86-64'
-    from 'build/lib/main/release/macos/x86-64'
-    into 'build/lib'
-    include '*.dylib'
+tasks.withType(LinkSharedLibrary).configureEach {
+    doLast {
+        if (machines.host().operatingSystemFamily.macOs) {
+            copy {
+                from 'build/lib/main/debug/macos/x86-64'
+                into rootDir.path + '/java/build/classes/java/main/META-INF/lib'
+                include '*.dylib'
+            }
+        } else if (machines.host().operatingSystemFamily.windows) {
+            println "copy dll"
+            copy {
+                from 'build/lib/main/debug/windows'
+                into rootDir.path + '/java/build/classes/java/main/META-INF/lib'
+                include '*.dll'
+            }
+        }
+    }
 }
