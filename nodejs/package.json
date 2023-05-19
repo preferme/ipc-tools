@@ -1,13 +1,22 @@
 {
-  "name": "nodejs",
+  "name": "ipc-tools",
   "version": "1.0.0",
-  "description": "nodejs call c language for ipc(shared memery).",
+  "description": "nodejs addons for ipc(shared memery).",
+  "keywords": [
+    "ipc",
+    "node-addon-api"
+  ],
+  "author": "HL",
+  "license": "Apache License 2.0",
   "main": "index.js",
   "scripts": {
-    "build": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node-gyp configure build",
+    "test": "node index.js"
   },
-  "keywords": [],
-  "author": "HL",
-  "license": "Apache License 2.0"
+  "private": true,
+  "gypfile": true,
+  "dependencies": {
+    "bindings": "~1.2.1",
+    "node-addon-api": "^3.0.0"
+  }
 }

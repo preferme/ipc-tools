@@ -1,5 +1,5 @@
 rootProject.name = 'ipc-tools'
 
 include 'java'
-include 'c'
+include 'jni'
 include 'nodejs'

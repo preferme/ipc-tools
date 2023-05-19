@@ -1,12 +1,12 @@
 
 plugins {
-    id "com.moowork.node" version "1.3.1"  // gradle-node-plugin
+    id "com.github.node-gradle.node" version "3.6.0" // gradle-node-plugin
 }
 
 node {
     /**
      * gradle-node-plugin
-     * https://github.com/srs/gradle-node-plugin/blob/master/docs/node.md
+     * https://github.com/node-gradle/gradle-node-plugin/blob/master/README.md
      */
     // Version of node to use.
     version = '14.18.0'
@@ -14,7 +14,7 @@ node {
     npmVersion = '6.14.15'
     // If true, it will download node using above parameters.
     // If false, it will try to use globally installed node.
-    download = false
+    download = true
     // Set the work directory for unpacking node
     workDir = file("${project.buildDir}/nodejs")
     // Set the work directory for NPM
@@ -23,6 +23,16 @@ node {
     nodeModulesDir = file("${project.projectDir}")
 }
 
-task npmRunBuild(type: NpmTask) {
+task build(type: NpmTask) {
     args = ['run', 'build']
+}
+
+task test(type: NpmTask) {
+    args = ['run', 'test']
+}
+
+task clean(type: Delete) {
+    doFirst {
+        delete rootDir.path + '/nodejs/build'
+    }
 }

@@ -6,7 +6,7 @@
 #include <cassert>
 
 int main() {
-//    c::Greeter greeter;
+//    jni::Greeter greeter;
 //    assert(greeter.greeting().compare("Hello, World!") == 0);
     return 0;
 }

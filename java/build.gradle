@@ -68,7 +68,7 @@ buildDependents {
 
 jar {
     dependsOn ':c:copyLib'
-    baseName 'ipc-tools'
+//    baseName 'ipc-tools'
     doFirst {
         copy {
             from rootDir.path + '/c/build/lib'
