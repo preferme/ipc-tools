@@ -33,6 +33,11 @@ model {
                 path '/custom/path/to/gcc-7.1.0/bin/'
             }
         }
+        clang(Clang) {
+            target("macos") {
+
+            }
+        }
     }
 }
 
@@ -76,16 +81,17 @@ tasks.withType(CppCompile).configureEach {
 tasks.withType(LinkSharedLibrary).configureEach {
     doLast {
         if (machines.host().operatingSystemFamily.macOs) {
+            println "copy dylib"
             copy {
-                from 'build/lib/main/debug/macos/x86-64'
-                into rootDir.path + '/java/build/classes/java/main/META-INF/lib'
+                from 'build/lib/main/debug/macos'
+                into rootDir.path + '/java/build/lib'
                 include '*.dylib'
             }
         } else if (machines.host().operatingSystemFamily.windows) {
             println "copy dll"
             copy {
                 from 'build/lib/main/debug/windows'
-                into rootDir.path + '/java/build/classes/java/main/META-INF/lib'
+                into rootDir.path + '/java/lib'
                 include '*.dll'
             }
         }

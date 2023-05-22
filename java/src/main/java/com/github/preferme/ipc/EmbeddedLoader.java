@@ -39,13 +39,13 @@ public final class EmbeddedLoader {
             osArch = osArch.replace('_', '-');
 //            String path = String.format("/WEB-INF/lib/%s/%s/%s%s.%s", osName, osArch, prefix, library, extension);
             String path = String.format("/META-INF/lib/%s%s.%s", prefix, library, extension);
+//            System.out.println("load lib :: " + path);
 
 //            java.net.URL url = EmbeddedLoader.class.getResource(path);
 //            if ("file".equals(url.getProtocol())) {
 //                System.load(url.getFile());
 //                return  true;
 //            }
-            System.err.println("path:: " + path);
 
             InputStream src = EmbeddedLoader.class.getResourceAsStream(path);
 

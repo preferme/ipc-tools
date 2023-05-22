@@ -51,16 +51,17 @@ targetCompatibility = 1.8
 compileJava {
     dependsOn ':jni:build'
     doLast {
-//        delete fileTree(dir: '.', includes: 'hs_err_pid*.log')
         copy {
-            from 'build/classes/java/main'
-            into 'out/production/classes'
-            include '**/*.dll'
+            from 'build/lib'
+            into 'out/production/classes/META-INF/lib'
         }
         copy {
-            from 'build/classes/java/main'
-            into 'out/test/classes'
-            include '**/*.dll'
+            from 'build/lib'
+            into 'out/test/classes/META-INF/lib'
+        }
+        copy {
+            from 'build/lib'
+            into 'build/classes/java/main/META-INF/lib'
         }
     }
     tasks.find {it.name.contains('test')}.enabled = false
@@ -80,10 +81,6 @@ jar {
 
 clean {
     doLast {
-//        exec {
-//            workingDir rootDir.path + '/java'
-//            commandLine "rm", "hs_err_pid*.log"
-//        }
         delete rootDir.path + '/java/hs_err_pid*.log'
     }
 }
