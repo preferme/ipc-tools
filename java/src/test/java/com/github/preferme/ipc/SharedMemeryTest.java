@@ -42,7 +42,9 @@ public class SharedMemeryTest {
                 0x01, 0x02, 0x03, 0x04, 0x05, 0x06
         };
         ByteBuffer buffer = ByteBuffer.wrap(data);
-        memery.write(buffer);
+        System.out.println("buffer.remaining : " + buffer.remaining());
+        int count = memery.write(buffer);
+        System.out.println("write count : " + count);
     }
 
 }

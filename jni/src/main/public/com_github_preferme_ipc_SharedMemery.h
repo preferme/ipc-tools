@@ -50,9 +50,9 @@ JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_read
 /*
  * Class:     com_github_preferme_ipc_SharedMemery
  * Method:    write
- * Signature: (Ljava/nio/ByteBuffer;)V
+ * Signature: (Ljava/nio/ByteBuffer;)I
  */
-JNIEXPORT void JNICALL Java_com_github_preferme_ipc_SharedMemery_write
+JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_write
   (JNIEnv *, jobject, jobject);
 
 #ifdef __cplusplus

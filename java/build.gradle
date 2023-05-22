@@ -81,6 +81,6 @@ jar {
 
 clean {
     doLast {
-        delete rootDir.path + '/java/hs_err_pid*.log'
+        delete 'hs_err_pid*.log'
     }
 }

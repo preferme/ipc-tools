@@ -55,7 +55,7 @@ public class SharedMemery {
         return read(ByteBufferFactory.Default);
     }
 
-    public native boolean write(ByteBuffer buffer);
+    public native int write(ByteBuffer buffer);
 
 }
 
