@@ -257,21 +257,67 @@ JNIEXPORT jobject JNICALL Java_com_github_preferme_ipc_SharedMemery_read
     reader_index = p_shared_attr->reader_index;
     writer_index = p_shared_attr->writer_index;
     capacity = p_shared_attr->capacity;
-    pthread_mutex_unlock(&p_shared_attr->mutex);
+
     int readableBytes = reader_index <= writer_index
             ? writer_index - reader_index
             : writer_index + (capacity-reader_index);
     LOG("[SharedMemery_read] readableBytes = %d\n", readableBytes);
+    int length = 0, *p_length = &length;
+    const jbyte *buf = reinterpret_cast<const jbyte *>(l_mapped_addr + sizeof(shared_attr) + reader_index);
+    const jbyte *buf_second = reinterpret_cast<const jbyte *>(l_mapped_addr + sizeof(shared_attr));
+    for (int i = 0; i < 4 && i < capacity - reader_index; ++i) {
+        p_length[i] = buf[i];
+    }
+    if (reader_index + 4 > capacity) {
+        int last_bytes = 4 - (reader_index + 4 - capacity);
+        for (int i = 0; i < reader_index + 4 - capacity; ++i) {
+            p_length[last_bytes] = buf_second[i];
+        }
+    }
+    if (length > readableBytes - 4) {
+        throw_runtime_exception(env, "not enough bytes to be read.");
+        pthread_mutex_unlock(&p_shared_attr->mutex);
+        return self;
+    }
     // 3.调用函数，获取buffer对象
-    jobject obj_buffer = env->CallObjectMethod(factory, mId_create, readableBytes);
+    jobject obj_buffer = env->CallObjectMethod(factory, mId_create, length);
     LOG("[SharedMemery_read] obj_buffer = %ld\n", obj_buffer);
     // 4.获取put函数，调用put函数
     jclass cls_buffer = env->FindClass("java/nio/ByteBuffer");
     LOG("[SharedMemery_read] cls_buffer = %ld\n", cls_buffer);
     jmethodID mId_put = env->GetMethodID(cls_buffer, "put", "([B)Ljava/nio/ByteBuffer;");
     LOG("[SharedMemery_read] mId_put = %ld\n", mId_put);
+    jbyteArray buffer = env->NewByteArray(length);
 
 
+    // 2. 读取数据
+    jint index = p_shared_attr->reader_index;
+    if (index + length <= capacity) {
+        // 2.1 读取中间部分的数据
+        env->SetByteArrayRegion(buffer, offset, length, buf);
+        p_shared_attr->reader_index += length;
+    } else {
+        // 2.2 读取前后两部分数据
+        jsize second_part = index + length - capacity;
+        jsize first_part = length - second_part;
+        if (first_part < 0) {
+            throw_runtime_exception(env, "not enough bytes to be read.");
+            pthread_mutex_unlock(&p_shared_attr->mutex);
+            return self;
+        }
+        if (first_part > 0) {
+            env->SetByteArrayRegion(buffer, offset, first_part, buf);
+            p_shared_attr->reader_index += first_part;
+        }
+        if (second_part > 0) {
+            const jbyte *buf_second = reinterpret_cast<const jbyte *>(l_mapped_addr + sizeof(shared_attr));
+            env->SetByteArrayRegion(buffer, offset + first_part, second_part, buf_second);
+            p_shared_attr->reader_index = second_part;
+        }
+    }
+    env->CallObjectMethod(obj_buffer, mId_put, buffer);
+    //TODO release buffer
+    pthread_mutex_unlock(&p_shared_attr->mutex);
     return obj_buffer;
 }
 
@@ -403,33 +449,43 @@ JNIEXPORT jint JNICALL Java_com_github_preferme_ipc_SharedMemery_write
         pthread_mutex_unlock(&p_shared_attr->mutex);
         return 0;
     }
-    // 3. 写入缓存数据
-    jint index = writer_index;
+    // 3. 写入共享缓存数据
     jbyte * buf = reinterpret_cast<jbyte *>(l_mapped_addr + sizeof(shared_attr) + writer_index);
-    if (index + length <= capacity) {
+    if (writer_index + length <= capacity) {
         // 2.1 写入中间部分的数据
         *((int*)buf) = remain;
         env->GetByteArrayRegion(ba_data, 0, remain, buf + 4);
         p_shared_attr->writer_index += length;
     } else {
         // 2.2 写入前后两部分数据
-        jsize second_part = index + length - capacity;
+        jsize second_part = writer_index + length - capacity;
         jsize first_part = length - second_part;
         if (first_part < 0) {
             throw_runtime_exception(env, "not enough bytes to be write.");
             pthread_mutex_unlock(&p_shared_attr->mutex);
             return 0;
         }
+        jbyte * p_remain = (jbyte*)&remain;
         if (first_part > 0) {
-
+            for (int i = 0; i < 4 && i < first_part; ++i) {
+                buf[i] = p_remain[i];
+            }
             if (first_part>4) {
-                env->GetByteArrayRegion(ba_data, 0, first_part, buf);
+                env->GetByteArrayRegion(ba_data, 0, first_part, buf + 4);
             }
             p_shared_attr->writer_index += first_part;
         }
         if (second_part > 0) {
             jbyte *buf_second = reinterpret_cast<jbyte *>(l_mapped_addr + sizeof(shared_attr));
-            env->GetByteArrayRegion(ba_data, first_part, second_part, buf_second);
+            int index_second = 0;
+            if (first_part < 4) {
+                for (int i = first_part; i < 4; ++i, ++index_second) {
+                    buf_second[index_second] = p_remain[i];
+                }
+            }
+            if (second_part - index_second > 0) {
+                env->GetByteArrayRegion(ba_data, first_part, second_part - index_second, buf_second + index_second);
+            }
             p_shared_attr->writer_index = second_part;
         }
     }
